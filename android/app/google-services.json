@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "239205165274",
+    "project_id": "cnstn-18d84",
+    "storage_bucket": "cnstn-18d84.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:239205165274:android:de415fec78bc03f914dde3",
+        "android_client_info": {
+          "package_name": "com.example.cnstn2026"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs5OPGPHYTCWeHw2zpLVNuiNl1uidmCgU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

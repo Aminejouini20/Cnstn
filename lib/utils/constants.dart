@@ -1,0 +1,15 @@
+const List<String> articleTypes = [
+  'Ordinateur de bureau',
+  'Ordinateur portable',
+  'Clavier',
+  'Souris',
+  'Lecteur CD/DVD',
+  'Graveur CD/DVD',
+  'Haut-parleur',
+  'Flash disk USB',
+  'Scanner',
+  'Imprimante',
+  'Multiprise',
+  'Câble réseau',
+  'Autre',
+];
