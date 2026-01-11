@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'core/app_routes.dart';
+import 'core/theme.dart';
 
-class AppTheme {
-  static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
-      primaryColor: const Color(0xFF0A2A66),
-      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF0A2A66),
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CNSTN Internship App',
+      theme: appTheme,
+      debugShowCheckedModeBanner: false,
+      initialRoute: AppRoutes.login,
+      routes: AppRoutes.routes,
     );
   }
 }

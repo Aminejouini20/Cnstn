@@ -1,42 +1,35 @@
+// lib/models/user_model.dart
 class UserModel {
-  final String uid;
-  final String firstName;
-  final String lastName;
+  final String id;
+  final String name;
   final String email;
+  final String profileImage;
   final String role;
-  final String direction;
-  final String service;
 
   UserModel({
-    required this.uid,
-    required this.firstName,
-    required this.lastName,
+    required this.id,
+    required this.name,
     required this.email,
+    required this.profileImage,
     required this.role,
-    required this.direction,
-    required this.service,
   });
 
-  factory UserModel.fromMap(String uid, Map<String, dynamic> data) {
+  factory UserModel.fromFirestore(Map<String, dynamic> data, String id) {
     return UserModel(
-      uid: uid,
-      firstName: data['firstName'],
-      lastName: data['lastName'],
-      email: data['email'],
-      role: data['role'],
-      direction: data['direction'],
-      service: data['service'],
+      id: id,
+      name: data['name'] ?? '',
+      email: data['email'] ?? '',
+      profileImage: data['profileImage'] ?? '',
+      role: data['role'] ?? 'user',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
+      'name': name,
       'email': email,
+      'profileImage': profileImage,
       'role': role,
-      'direction': direction,
-      'service': service,
     };
   }
 }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_text_field.dart';
 import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
+import '../../core/app_routes.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,31 +13,67 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
-  final auth = AuthService();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _loading = false;
+
+  Future<void> _login() async {
+    setState(() => _loading = true);
+
+    try {
+      final user = await AuthService().login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Login failed')));
+        return;
+      }
+
+      // Fetch role from Firestore
+      final role = await FirestoreService().getUserRole(user.uid);
+
+      if (!mounted) return;
+
+      if (role == 'admin') {
+        Navigator.pushReplacementNamed(context, AppRoutes.adminHome);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.userHome);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Connexion')),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
+            AppTextField(controller: _emailController, label: 'Email'),
             const SizedBox(height: 12),
-            TextField(controller: passCtrl, decoration: const InputDecoration(labelText: 'Mot de passe'), obscureText: true),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                final user = await auth.login(emailCtrl.text, passCtrl.text);
-                if (user != null && mounted) {
-                  Navigator.pushReplacementNamed(context, '/userHome');
-                }
-              },
-              child: const Text('Se connecter'),
-            ),
+            AppTextField(
+                controller: _passwordController,
+                label: 'Password',
+                obscureText: true),
+            const SizedBox(height: 20),
+            AppButton(text: 'Login', onPressed: _login, loading: _loading),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.register),
+              child: const Text('Register'),
+            )
           ],
         ),
       ),

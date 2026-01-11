@@ -1,15 +1,5 @@
-const List<String> articleTypes = [
-  'Ordinateur de bureau',
-  'Ordinateur portable',
-  'Clavier',
-  'Souris',
-  'Lecteur CD/DVD',
-  'Graveur CD/DVD',
-  'Haut-parleur',
-  'Flash disk USB',
-  'Scanner',
-  'Imprimante',
-  'Multiprise',
-  'Câble réseau',
-  'Autre',
-];
+class Constants {
+  static const String usersCollection = 'users';
+  static const String materialRequestsCollection = 'material_requests';
+  static const String roomReservationsCollection = 'room_reservations';
+}
