@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.cnstn2026"
-    compileSdk = 34  // Make sure this matches your flutter.compileSdkVersion
+    compileSdk = 36  // Make sure this matches your flutter.compileSdkVersion
 
     defaultConfig {
         applicationId = "com.example.cnstn2026"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
     }

@@ -3,30 +3,41 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firestore_service.dart';
 import '../../models/room_reservation_model.dart';
 
-class MyRoomReservationsPage extends StatelessWidget {
+class MyRoomReservationsPage extends StatefulWidget {
   const MyRoomReservationsPage({super.key});
 
   @override
+  State<MyRoomReservationsPage> createState() => _MyRoomReservationsPageState();
+}
+
+class _MyRoomReservationsPageState extends State<MyRoomReservationsPage> {
+  final FirestoreService _firestore = FirestoreService();
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+
+  @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text('Not logged in'));
-
-    return StreamBuilder<List<RoomReservation>>(
-      stream: FirestoreService().myRoomReservations(user.uid),
+    return StreamBuilder<List<RoomReservationModel>>(
+      stream: _firestore.getUserRoomReservations(uid),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('No reservations'));
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-        final reservations = snapshot.data!;
+        final list = snapshot.data!;
+
         return ListView.builder(
-          itemCount: reservations.length,
+          itemCount: list.length,
           itemBuilder: (context, index) {
-            final res = reservations[index];
+            final item = list[index];
             return Card(
-              margin: const EdgeInsets.all(8),
+              margin: const EdgeInsets.all(12),
               child: ListTile(
-                title: Text('Room: ${res.roomNumber}'),
-                subtitle: Text('From: ${res.from.toLocal().toString().split(' ')[0]}\nTo: ${res.to.toLocal().toString().split(' ')[0]}\nStatus: ${res.status}'),
+                title: Text(item.reason),
+                subtitle: Text("Status: ${item.status}"),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    await _firestore.deleteRoomReservation(item.id);
+                  },
+                ),
               ),
             );
           },

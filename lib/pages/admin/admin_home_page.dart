@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'material_requests_validation_page.dart';
-import 'room_reservations_validation_page.dart';
-import '../../services/auth_service.dart';
-import '../../core/app_routes.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../admin/material_requests_validation_page.dart';
+import '../admin/room_reservations_validation_page.dart';
+import '../admin/admin_users_page.dart';
+import '../admin/admin_treated_requests_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -12,56 +14,53 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
-  int _selectedIndex = 0;
+  int _index = 0;
 
-  final _pages = [
-    const MaterialRequestsValidationPage(),
-    const RoomReservationsValidationPage(),
+  final pages = const [
+    MaterialRequestsValidationPage(),
+    RoomReservationsValidationPage(),
+    AdminUsersPage(),
   ];
-
-  void _onSelectItem(int index) {
-    setState(() => _selectedIndex = index);
-    Navigator.pop(context); // close drawer
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text("Admin Dashboard"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check_circle_outline),
+            tooltip: 'Treated Requests',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AdminTreatedRequestsPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text('Admin Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: const Text('Material Requests'),
-              onTap: () => _onSelectItem(0),
-            ),
-            ListTile(
-              leading: const Icon(Icons.meeting_room),
-              title: const Text('Room Reservations'),
-              onTap: () => _onSelectItem(1),
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () async {
-                await AuthService().logout();
-                if (!mounted) return;
-                Navigator.pushReplacementNamed(context, AppRoutes.login);
-              },
-            ),
-          ],
-        ),
+      body: pages[_index],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
+        items: const [
+          BottomNavigationBarItem(
+              icon: Icon(Icons.inventory), label: "Materials"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.meeting_room), label: "Rooms"),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Users"),
+        ],
       ),
-      body: _pages[_selectedIndex],
     );
   }
 }

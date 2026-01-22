@@ -1,78 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_text_field.dart';
-import '../../models/room_reservation_model.dart';
 import '../../services/firestore_service.dart';
+import '../../models/user_model.dart';
 
 class RoomReservationForm extends StatefulWidget {
-  const RoomReservationForm({Key? key}) : super(key: key);
+  const RoomReservationForm({super.key});
 
   @override
-  _RoomReservationFormState createState() => _RoomReservationFormState();
+  State<RoomReservationForm> createState() => _RoomReservationFormState();
 }
 
 class _RoomReservationFormState extends State<RoomReservationForm> {
-  final TextEditingController _roomController = TextEditingController();
-  final TextEditingController _fromController = TextEditingController();
-  final TextEditingController _toController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final FirestoreService _firestore = FirestoreService();
+  final TextEditingController reasonCtrl = TextEditingController();
+  final TextEditingController participantsCtrl = TextEditingController();
+  final TextEditingController timeCtrl = TextEditingController();
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  bool loading = false;
+  UserModel? user;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
 
-    final fromDate = DateTime.tryParse(_fromController.text.trim());
-    final toDate = DateTime.tryParse(_toController.text.trim());
-    if (fromDate == null || toDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid dates (YYYY-MM-DD)')),
-      );
-      return;
-    }
+  Future<void> _loadUser() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final u = await _firestore.getUserById(uid);
+    setState(() => user = u);
+  }
 
-    final reservation = RoomReservation(
-      id: '', // Firestore will auto-generate
-      userId: user.uid, // updated from requesterId
-      roomNumber: _roomController.text.trim(),
-      from: fromDate,
-      to: toDate,
-      status: 'Pending',
-    );
+  Future<void> submit() async {
+    setState(() => loading = true);
 
-    await FirestoreService().createRoomReservation(reservation);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room reservation submitted!')),
-    );
+    await _firestore.createRoomReservation({
+      'userId': uid,
+      'requesterName': user!.name,
+      'direction': user!.direction,
+      'reason': reasonCtrl.text.trim(),
+      'timeSlot': timeCtrl.text.trim(),
+      'participants': int.parse(participantsCtrl.text.trim()),
+      'status': 'pending',
+      'adminComment': '',
+      'reservationDate': DateTime.now(),
+      'createdAt': DateTime.now(),
+    });
 
-    _roomController.clear();
-    _fromController.clear();
-    _toController.clear();
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (user == null) return const Center(child: CircularProgressIndicator());
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Room Reservation')),
+      appBar: AppBar(title: const Text("Room Reservation")),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              AppTextField(controller: _roomController, label: 'Room Number'),
-              const SizedBox(height: 16),
-              AppTextField(controller: _fromController, label: 'From (YYYY-MM-DD)'),
-              const SizedBox(height: 16),
-              AppTextField(controller: _toController, label: 'To (YYYY-MM-DD)'),
-              const SizedBox(height: 20),
-              AppButton(text: 'Submit', onPressed: _submit),
-            ],
-          ),
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            TextField(
+              controller: reasonCtrl,
+              decoration: const InputDecoration(labelText: "Reason"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: timeCtrl,
+              decoration: const InputDecoration(labelText: "Time Slot"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: participantsCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Participants"),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: loading ? null : submit,
+              child: loading ? const CircularProgressIndicator() : const Text("Submit"),
+            ),
+          ],
         ),
       ),
     );

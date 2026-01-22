@@ -3,30 +3,41 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firestore_service.dart';
 import '../../models/material_request_model.dart';
 
-class MyMaterialRequestsPage extends StatelessWidget {
+class MyMaterialRequestsPage extends StatefulWidget {
   const MyMaterialRequestsPage({super.key});
 
   @override
+  State<MyMaterialRequestsPage> createState() => _MyMaterialRequestsPageState();
+}
+
+class _MyMaterialRequestsPageState extends State<MyMaterialRequestsPage> {
+  final FirestoreService _firestore = FirestoreService();
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+
+  @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text('Not logged in'));
-
-    return StreamBuilder<List<MaterialRequest>>(
-      stream: FirestoreService().myMaterialRequests(user.uid),
+    return StreamBuilder<List<MaterialRequestModel>>(
+      stream: _firestore.getUserMaterialRequests(uid),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('No requests'));
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-        final requests = snapshot.data!;
+        final list = snapshot.data!;
+
         return ListView.builder(
-          itemCount: requests.length,
+          itemCount: list.length,
           itemBuilder: (context, index) {
-            final req = requests[index];
+            final item = list[index];
             return Card(
-              margin: const EdgeInsets.all(8),
+              margin: const EdgeInsets.all(12),
               child: ListTile(
-                title: Text(req.materialName),
-                subtitle: Text('Quantity: ${req.quantity}\nStatus: ${req.status}'),
+                title: Text(item.article),
+                subtitle: Text("Status: ${item.status}"),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    await _firestore.deleteMaterialRequest(item.id);
+                  },
+                ),
               ),
             );
           },

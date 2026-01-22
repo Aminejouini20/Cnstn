@@ -67,6 +67,7 @@ class DefaultFirebaseOptions {
     projectId: 'cnstn-18d84',
     databaseURL: 'https://cnstn-18d84-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cnstn-18d84.firebasestorage.app',
+    iosClientId: '239205165274-vf8mg5rp2t32qlhogsob1v8t6j96i0vm.apps.googleusercontent.com',
     iosBundleId: 'com.example.cnstn2026',
   );
 
@@ -77,6 +78,7 @@ class DefaultFirebaseOptions {
     projectId: 'cnstn-18d84',
     databaseURL: 'https://cnstn-18d84-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'cnstn-18d84.firebasestorage.app',
+    iosClientId: '239205165274-vf8mg5rp2t32qlhogsob1v8t6j96i0vm.apps.googleusercontent.com',
     iosBundleId: 'com.example.cnstn2026',
   );
 
@@ -90,4 +92,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'cnstn-18d84.firebasestorage.app',
     measurementId: 'G-ZMBZSV7LVP',
   );
+
 }

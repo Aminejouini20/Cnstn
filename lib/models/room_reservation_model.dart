@@ -1,59 +1,51 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class RoomReservation {
+class RoomReservationModel {
   final String id;
   final String userId;
-  final String roomNumber;
-  final DateTime from;
-  final DateTime to;
+  final String requesterName;
+  final String direction;
+  final String reason;
+  final String timeSlot;
+  final int participants;
   final String status;
+  final String adminComment;
+  final DateTime reservationDate;
+  final DateTime createdAt;
 
-  RoomReservation({
+  RoomReservationModel({
     required this.id,
     required this.userId,
-    required this.roomNumber,
-    required this.from,
-    required this.to,
+    required this.requesterName,
+    required this.direction,
+    required this.reason,
+    required this.timeSlot,
+    required this.participants,
     required this.status,
+    required this.adminComment,
+    required this.reservationDate,
+    required this.createdAt,
   });
 
-  factory RoomReservation.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return RoomReservation(
+  factory RoomReservationModel.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    return RoomReservationModel(
       id: doc.id,
       userId: data['userId'] ?? '',
-      roomNumber: data['roomNumber'] ?? '',
-      from: (data['from'] as Timestamp).toDate(),
-      to: (data['to'] as Timestamp).toDate(),
-      status: data['status'] ?? 'Pending',
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'roomNumber': roomNumber,
-      'from': from,
-      'to': to,
-      'status': status,
-    };
-  }
-
-  RoomReservation copyWith({
-    String? id,
-    String? userId,
-    String? roomNumber,
-    DateTime? from,
-    DateTime? to,
-    String? status,
-  }) {
-    return RoomReservation(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      roomNumber: roomNumber ?? this.roomNumber,
-      from: from ?? this.from,
-      to: to ?? this.to,
-      status: status ?? this.status,
+      requesterName: data['requesterName'] ?? '',
+      direction: data['direction'] ?? '',
+      reason: data['reason'] ?? '',
+      timeSlot: data['timeSlot'] ?? '',
+      participants: data['participants'] ?? 0,
+      status: data['status'] ?? 'pending',
+      adminComment: data['adminComment'] ?? '',
+      reservationDate: (data['reservationDate'] is Timestamp)
+          ? (data['reservationDate'] as Timestamp).toDate()
+          : DateTime.now(),
+      createdAt: (data['createdAt'] is Timestamp)
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 }
