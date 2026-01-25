@@ -1,78 +1,175 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_text_field.dart';
-import '../../models/room_reservation_model.dart';
 import '../../services/firestore_service.dart';
+import '../../models/user_model.dart';
 
 class RoomReservationForm extends StatefulWidget {
-  const RoomReservationForm({Key? key}) : super(key: key);
+  const RoomReservationForm({super.key});
 
   @override
-  _RoomReservationFormState createState() => _RoomReservationFormState();
+  State<RoomReservationForm> createState() => _RoomReservationFormState();
 }
 
 class _RoomReservationFormState extends State<RoomReservationForm> {
-  final TextEditingController _roomController = TextEditingController();
-  final TextEditingController _fromController = TextEditingController();
-  final TextEditingController _toController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final FirestoreService _firestore = FirestoreService();
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  final TextEditingController reasonCtrl = TextEditingController();
+  final TextEditingController participantsCtrl = TextEditingController();
+  final TextEditingController timeCtrl = TextEditingController();
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  bool loading = false;
+  UserModel? user;
 
-    final fromDate = DateTime.tryParse(_fromController.text.trim());
-    final toDate = DateTime.tryParse(_toController.text.trim());
-    if (fromDate == null || toDate == null) {
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final u = await _firestore.getUserById(uid);
+    setState(() => user = u);
+  }
+
+  Future<void> submit() async {
+    if (reasonCtrl.text.trim().isEmpty ||
+        participantsCtrl.text.trim().isEmpty ||
+        timeCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid dates (YYYY-MM-DD)')),
+        const SnackBar(content: Text("Please fill all fields")),
       );
       return;
     }
 
-    final reservation = RoomReservation(
-      id: '', // Firestore will auto-generate
-      userId: user.uid, // updated from requesterId
-      roomNumber: _roomController.text.trim(),
-      from: fromDate,
-      to: toDate,
-      status: 'Pending',
-    );
+    if (int.tryParse(participantsCtrl.text.trim()) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Participants must be a number")),
+      );
+      return;
+    }
 
-    await FirestoreService().createRoomReservation(reservation);
+    setState(() => loading = true);
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room reservation submitted!')),
-    );
+    final uid = FirebaseAuth.instance.currentUser!.uid;
 
-    _roomController.clear();
-    _fromController.clear();
-    _toController.clear();
+    await _firestore.createRoomReservation({
+      'userId': uid,
+      'requesterName': user!.name,
+      'direction': user!.direction,
+      'reason': reasonCtrl.text.trim(),
+      'timeSlot': timeCtrl.text.trim(),
+      'participants': int.parse(participantsCtrl.text.trim()),
+      'status': 'pending',
+      'adminComment': '',
+      'reservationDate': DateTime.now(),
+      'createdAt': DateTime.now(),
+    });
+
+    setState(() => loading = false);
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (user == null) return const Center(child: CircularProgressIndicator());
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Room Reservation')),
+      appBar: AppBar(
+        title: const Text("Room Reservation"),
+        backgroundColor: const Color(0xFF0B1B33),
+        elevation: 0,
+      ),
+      backgroundColor: const Color(0xFFF4F6F8),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              AppTextField(controller: _roomController, label: 'Room Number'),
-              const SizedBox(height: 16),
-              AppTextField(controller: _fromController, label: 'From (YYYY-MM-DD)'),
-              const SizedBox(height: 16),
-              AppTextField(controller: _toController, label: 'To (YYYY-MM-DD)'),
-              const SizedBox(height: 20),
-              AppButton(text: 'Submit', onPressed: _submit),
-            ],
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            _buildTitle(),
+            const SizedBox(height: 16),
+
+            _buildField(
+              controller: reasonCtrl,
+              label: "Reason",
+              hint: "ex: Training session",
+            ),
+            const SizedBox(height: 12),
+
+            _buildField(
+              controller: timeCtrl,
+              label: "Time Slot",
+              hint: "ex: 12:00 - 14:00",
+            ),
+            const SizedBox(height: 12),
+
+            _buildField(
+              controller: participantsCtrl,
+              label: "Participants",
+              hint: "ex: 24",
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 24),
+
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B1B33),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              onPressed: loading ? null : submit,
+              child: loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      "Submit Reservation",
+                      style: TextStyle(fontSize: 16),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          "Room Reservation Form",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0B1B33),
           ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          "Fill the details below to request a room",
+          style: TextStyle(color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
         ),
       ),
     );

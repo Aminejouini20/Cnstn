@@ -3,33 +3,29 @@ import 'package:flutter/material.dart';
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final TextInputType keyboardType; // must exist
-  final bool obscureText;
+  final IconData icon;
+  final bool obscure;
+  final TextInputType type;
 
   const AppTextField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.label,
-    this.keyboardType = TextInputType.text, // default
-    this.obscureText = false,
-  }) : super(key: key);
+    required this.icon,
+    this.obscure = false,
+    this.type = TextInputType.text,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
+    return TextField(
       controller: controller,
-      keyboardType: keyboardType, // used here
-      obscureText: obscureText,
+      keyboardType: type,
+      obscureText: obscure,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        prefixIcon: Icon(icon, color: Theme.of(context).primaryColor),
       ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Please enter $label';
-        }
-        return null;
-      },
     );
   }
 }

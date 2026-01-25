@@ -2,53 +2,172 @@ import 'package:flutter/material.dart';
 import '../../services/firestore_service.dart';
 import '../../models/material_request_model.dart';
 
-class MaterialRequestsValidationPage extends StatelessWidget {
+class MaterialRequestsValidationPage extends StatefulWidget {
   const MaterialRequestsValidationPage({super.key});
 
-  Future<void> _approveRequest(MaterialRequest request) async {
-    await FirestoreService().updateMaterialRequest(request.copyWith(status: 'Approved'));
-  }
+  @override
+  State<MaterialRequestsValidationPage> createState() =>
+      _MaterialRequestsValidationPageState();
+}
 
-  Future<void> _rejectRequest(MaterialRequest request) async {
-    await FirestoreService().updateMaterialRequest(request.copyWith(status: 'Rejected'));
-  }
+class _MaterialRequestsValidationPageState
+    extends State<MaterialRequestsValidationPage> {
+  final FirestoreService _firestore = FirestoreService();
+  String search = '';
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<MaterialRequest>>(
-      stream: FirestoreService().allMaterialRequests(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('No requests'));
+    return Column(
+      children: [
+        const SizedBox(height: 12),
 
-        final requests = snapshot.data!;
-        return ListView.builder(
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final req = requests[index];
-            return Card(
-              margin: const EdgeInsets.all(8),
-              child: ListTile(
-                title: Text(req.materialName),
-                subtitle: Text('Quantity: ${req.quantity}\nStatus: ${req.status}'),
-                trailing: req.status == 'Pending'
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                              icon: const Icon(Icons.check, color: Colors.green),
-                              onPressed: () => _approveRequest(req)),
-                          IconButton(
-                              icon: const Icon(Icons.close, color: Colors.red),
-                              onPressed: () => _rejectRequest(req)),
-                        ],
-                      )
-                    : null,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            onChanged: (v) => setState(() => search = v.toLowerCase()),
+            decoration: InputDecoration(
+              hintText: "Search by article or requester",
+              prefixIcon: const Icon(Icons.search, color: Colors.blueAccent),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        Expanded(
+          child: StreamBuilder<List<MaterialRequestModel>>(
+            stream: _firestore.getPendingMaterialRequests(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text("Error loading requests"));
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final list = snapshot.data!
+                  .where((e) =>
+                      e.article.toLowerCase().contains(search) ||
+                      e.requesterName.toLowerCase().contains(search))
+                  .toList();
+
+              if (list.isEmpty) {
+                return const Center(child: Text("No pending requests"));
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.only(bottom: 16),
+                itemCount: list.length,
+                itemBuilder: (context, index) {
+                  final item = list[index];
+
+                  return _card(
+                    title: item.article,
+                    subtitle: "${item.requesterName} • ${item.direction}",
+                    onApprove: () async {
+                      final comment =
+                          await _showCommentDialog(context, "Approve Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.approveMaterialRequest(
+                        requestId: item.id,
+                        comment: comment,
+                      );
+                    },
+                    onReject: () async {
+                      final comment =
+                          await _showCommentDialog(context, "Reject Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.rejectMaterialRequest(
+                        requestId: item.id,
+                        comment: comment,
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
+
+  Future<String?> _showCommentDialog(
+      BuildContext context, String title) async {
+    TextEditingController commentController = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: commentController,
+          decoration: const InputDecoration(
+            hintText: "Enter your comment",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, commentController.text.trim()),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _card({
+    required String title,
+    required String subtitle,
+    required VoidCallback onApprove,
+    required VoidCallback onReject,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: _box(),
+      child: ListTile(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.check_circle, color: Colors.green),
+              onPressed: onApprove,
+            ),
+            IconButton(
+              icon: const Icon(Icons.cancel, color: Colors.redAccent),
+              onPressed: onReject,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _box() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
 }

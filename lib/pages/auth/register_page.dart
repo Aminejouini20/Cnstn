@@ -1,7 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_text_field.dart';
-import '../../services/auth_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+
+import '../../core/app_routes.dart';
+import '../../services/firestore_service.dart';
+import '../../core/constants/cloudinary_constants.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -11,59 +19,201 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  final _directionController = TextEditingController();
-  final _serviceController = TextEditingController();
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+  final nameCtrl = TextEditingController();
+  final directionCtrl = TextEditingController();
+  final positionCtrl = TextEditingController();
 
-  bool _loading = false;
+  bool loading = false;
+  File? pickedImage;
 
-  Future<void> _register() async {
-    setState(() => _loading = true);
-    try {
-      final user = await AuthService().register(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        direction: _directionController.text.trim(),
-        service: _serviceController.text.trim(),
-      );
-      if (user != null && mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+  Future<void> pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? img = await picker.pickImage(source: ImageSource.gallery);
+
+    if (img != null) {
+      setState(() {
+        pickedImage = File(img.path);
+      });
     }
+  }
+
+  Future<String> uploadProfileImageToCloudinary() async {
+    final uri = Uri.parse(CloudinaryConstants.uploadUrl);
+
+    final request = http.MultipartRequest('POST', uri);
+
+    request.fields['upload_preset'] = CloudinaryConstants.uploadPreset;
+    request.files.add(
+      await http.MultipartFile.fromPath('file', pickedImage!.path),
+    );
+
+    final response = await request.send();
+    final resBody = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      final data = json.decode(resBody);
+      return data['secure_url'];
+    } else {
+      throw Exception("Cloudinary upload failed");
+    }
+  }
+
+  Future<void> register() async {
+    setState(() => loading = true);
+
+    try {
+      final userCred = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+        email: emailCtrl.text.trim(),
+        password: passCtrl.text.trim(),
+      );
+
+      final uid = userCred.user!.uid;
+
+      String imageUrl = '';
+      if (pickedImage != null) {
+        imageUrl = await uploadProfileImageToCloudinary();
+      }
+
+      final fs = FirestoreService();
+      await fs.createUser(uid, {
+        'Direction': 'Informatique',
+        'direction': directionCtrl.text.trim().isEmpty
+            ? '*'
+            : directionCtrl.text.trim(),
+        'email': emailCtrl.text.trim(),
+        'name': nameCtrl.text.trim(),
+        'position': positionCtrl.text.trim().isEmpty
+            ? '*'
+            : positionCtrl.text.trim(),
+        'profileImage': imageUrl,
+        'role': 'employee',
+      });
+
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Register failed: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon,
+      {bool hide = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: ctrl,
+        obscureText: hide,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'Enter your $label',
+          prefixIcon: Icon(icon, color: const Color(0xFF1565C0)),
+          filled: true,
+          fillColor: const Color(0xFFF7F9FC),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            AppTextField(controller: _firstNameController, label: 'First Name'),
-            const SizedBox(height: 12),
-            AppTextField(controller: _lastNameController, label: 'Last Name'),
-            const SizedBox(height: 12),
-            AppTextField(controller: _emailController, label: 'Email'),
-            const SizedBox(height: 12),
-            AppTextField(controller: _passwordController, label: 'Password', obscureText: true),
-            const SizedBox(height: 12),
-            AppTextField(controller: _directionController, label: 'Direction'),
-            const SizedBox(height: 12),
-            AppTextField(controller: _serviceController, label: 'Service'),
-            const SizedBox(height: 20),
-            AppButton(text: 'Register', onPressed: _register, loading: _loading),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: ListView(
+            children: [
+              const SizedBox(height: 25),
+
+              Center(
+                child: GestureDetector(
+                  onTap: pickImage,
+                  child: CircleAvatar(
+                    radius: 42,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage:
+                        pickedImage != null ? FileImage(pickedImage!) : null,
+                    child: pickedImage == null
+                        ? const Icon(Icons.add_a_photo, color: Color(0xFF1565C0))
+                        : null,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              _buildField(nameCtrl, "Full Name", Icons.person),
+              const SizedBox(height: 12),
+              _buildField(emailCtrl, "Email", Icons.email),
+              const SizedBox(height: 12),
+              _buildField(passCtrl, "Password", Icons.lock, hide: true),
+              const SizedBox(height: 12),
+              _buildField(directionCtrl, "Direction", Icons.apartment),
+              const SizedBox(height: 12),
+              _buildField(positionCtrl, "Position", Icons.work),
+
+              const SizedBox(height: 18),
+
+              ElevatedButton(
+                onPressed: loading ? null : register,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1565C0),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Register",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+              ),
+
+              const SizedBox(height: 14),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Already have an account? "),
+                  GestureDetector(
+                    onTap: () =>
+                        Navigator.pushReplacementNamed(context, AppRoutes.login),
+                    child: const Text(
+                      "Login",
+                      style: TextStyle(
+                        color: Color(0xFF1565C0),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

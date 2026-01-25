@@ -1,79 +1,206 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
+import '../models/user_model.dart';
 import '../models/material_request_model.dart';
 import '../models/room_reservation_model.dart';
-import '../models/user_model.dart';
 
 class FirestoreService {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// ----------------- User Role -----------------
-  Future<String> getUserRole(String uid) async {
-    final doc = await _db.collection('users').doc(uid).get();
-    if (!doc.exists) return 'user';
-    return doc.data()?['role'] ?? 'user';
+  /* ========================= USERS ========================= */
+
+  Stream<List<UserModel>> getUsers() {
+    return _db.collection('users').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        try {
+          return UserModel.fromDoc(doc);
+        } catch (e) {
+          debugPrint('❌ User parse error (${doc.id}): $e');
+          return UserModel(
+            id: doc.id,
+            name: 'Unknown',
+            email: '',
+            direction: '',
+            position: '',
+            role: 'employee',
+            profileImage: '',
+          );
+        }
+      }).toList();
+    });
   }
 
-  /// ----------------- Material Requests -----------------
-
-  // Create material request
-  Future<void> createMaterialRequest(MaterialRequest request) async {
-    await _db.collection('material_requests').add(request.toMap());
+  Future<UserModel?> getUserById(String uid) async {
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      if (!doc.exists) return null;
+      return UserModel.fromDoc(doc);
+    } catch (e) {
+      debugPrint('❌ getUserById error: $e');
+      return null;
+    }
   }
 
-  // Get current user's material requests (user page)
-  Stream<List<MaterialRequest>> myMaterialRequests(String uid) {
+  Future<void> createUser(String uid, Map<String, dynamic> data) async {
+    await _db.collection('users').doc(uid).set(data);
+  }
+
+  Future<void> updateUser(String uid, Map<String, dynamic> data) async {
+    await _db.collection('users').doc(uid).update(data);
+  }
+
+  Future<void> deleteUser(String uid) async {
+    await _db.collection('users').doc(uid).delete();
+  }
+
+  /* ========================= MATERIAL REQUESTS ========================= */
+
+  Stream<List<MaterialRequestModel>> getPendingMaterialRequests() {
+    return _db
+        .collection('material_requests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map(_mapMaterialList);
+  }
+
+  Stream<List<MaterialRequestModel>> getTreatedMaterialRequests() {
+    return _db
+        .collection('material_requests')
+        .where('status', whereIn: ['approved', 'rejected'])
+        .snapshots()
+        .map(_mapMaterialList);
+  }
+
+  Stream<List<MaterialRequestModel>> getUserMaterialRequests(String uid) {
     return _db
         .collection('material_requests')
         .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => MaterialRequest.fromFirestore(doc)).toList());
+        .map(_mapMaterialList);
   }
 
-  // Get all material requests (admin page)
-  Stream<List<MaterialRequest>> allMaterialRequests() {
-    return _db.collection('material_requests').snapshots().map(
-        (snapshot) => snapshot.docs
-            .map((doc) => MaterialRequest.fromFirestore(doc))
-            .toList());
+  Future<void> createMaterialRequest(Map<String, dynamic> data) async {
+    await _db.collection('material_requests').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+      'adminComment': '',
+      'status': 'pending',
+    });
   }
 
-  // Update material request status
-  Future<void> updateMaterialRequest(MaterialRequest request) async {
-    await _db.collection('material_requests').doc(request.id).update(request.toMap());
+  Future<void> updateMaterialRequest(String id, Map<String, dynamic> data) async {
+    await _db.collection('material_requests').doc(id).update(data);
   }
 
-  /// ----------------- Room Reservations -----------------
-
-  // Create room reservation
-  Future<void> createRoomReservation(RoomReservation reservation) async {
-    await _db.collection('room_reservations').add(reservation.toMap());
+  Future<void> deleteMaterialRequest(String id) async {
+    await _db.collection('material_requests').doc(id).delete();
   }
 
-  // Get current user's room reservations
-  Stream<List<RoomReservation>> myRoomReservations(String uid) {
+  List<MaterialRequestModel> _mapMaterialList(QuerySnapshot snap) {
+    return snap.docs.map((doc) {
+      try {
+        return MaterialRequestModel.fromDoc(doc);
+      } catch (e) {
+        debugPrint('❌ Material parse error (${doc.id}): $e');
+        return null;
+      }
+    }).whereType<MaterialRequestModel>().toList();
+  }
+
+  /* ========================= ROOM RESERVATIONS ========================= */
+
+  Stream<List<RoomReservationModel>> getPendingRoomReservations() {
+    return _db
+        .collection('room_reservations')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map(_mapRoomList);
+  }
+
+  Stream<List<RoomReservationModel>> getTreatedRoomReservations() {
+    return _db
+        .collection('room_reservations')
+        .where('status', whereIn: ['approved', 'rejected'])
+        .snapshots()
+        .map(_mapRoomList);
+  }
+
+  Stream<List<RoomReservationModel>> getUserRoomReservations(String uid) {
     return _db
         .collection('room_reservations')
         .where('userId', isEqualTo: uid)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => RoomReservation.fromFirestore(doc))
-            .toList());
+        .map(_mapRoomList);
   }
 
-  // Get all room reservations (admin page)
-  Stream<List<RoomReservation>> allRoomReservations() {
-    return _db.collection('room_reservations').snapshots().map(
-        (snapshot) => snapshot.docs
-            .map((doc) => RoomReservation.fromFirestore(doc))
-            .toList());
+  Future<void> createRoomReservation(Map<String, dynamic> data) async {
+    await _db.collection('room_reservations').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+      'adminComment': '',
+      'status': 'pending',
+    });
   }
 
-  // Update room reservation status
-  Future<void> updateRoomReservation(RoomReservation reservation) async {
-    await _db
-        .collection('room_reservations')
-        .doc(reservation.id)
-        .update(reservation.toMap());
+  Future<void> updateRoomReservation(String id, Map<String, dynamic> data) async {
+    await _db.collection('room_reservations').doc(id).update(data);
+  }
+
+  Future<void> deleteRoomReservation(String id) async {
+    await _db.collection('room_reservations').doc(id).delete();
+  }
+
+  List<RoomReservationModel> _mapRoomList(QuerySnapshot snap) {
+    return snap.docs.map((doc) {
+      try {
+        return RoomReservationModel.fromDoc(doc);
+      } catch (e) {
+        debugPrint('❌ Room parse error (${doc.id}): $e');
+        return null;
+      }
+    }).whereType<RoomReservationModel>().toList();
+  }
+
+  /* ========================= APPROVE / REJECT (NO NOTIFICATIONS) ========================= */
+
+  Future<void> approveMaterialRequest({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('material_requests').doc(requestId).update({
+      'status': 'approved',
+      'adminComment': comment,
+    });
+  }
+
+  Future<void> rejectMaterialRequest({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('material_requests').doc(requestId).update({
+      'status': 'rejected',
+      'adminComment': comment,
+    });
+  }
+
+  Future<void> approveRoomReservation({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('room_reservations').doc(requestId).update({
+      'status': 'approved',
+      'adminComment': comment,
+    });
+  }
+
+  Future<void> rejectRoomReservation({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('room_reservations').doc(requestId).update({
+      'status': 'rejected',
+      'adminComment': comment,
+    });
   }
 }

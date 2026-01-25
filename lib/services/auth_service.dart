@@ -2,35 +2,43 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  final _auth = FirebaseAuth.instance;
-  final _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<User?> login(String email, String password) async {
-    final res = await _auth.signInWithEmailAndPassword(email: email, password: password);
-    return res.user;
+    final result = await _auth.signInWithEmailAndPassword(email: email, password: password);
+    return result.user;
   }
 
   Future<User?> register({
     required String email,
     required String password,
-    required String firstName,
-    required String lastName,
+    required String name,
     required String direction,
-    required String service,
+    required String position,
   }) async {
-    final res = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    final result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
-    await _db.collection('users').doc(res.user!.uid).set({
-      'firstName': firstName,
-      'lastName': lastName,
+    // create user profile in Firestore
+    await _db.collection('users').doc(result.user!.uid).set({
+      'Direction': 'Informatique',
+      'direction': direction.isEmpty ? '*' : direction,
       'email': email,
-      'role': 'user',
-      'direction': direction,
-      'service': service,
+      'name': name,
+      'position': position.isEmpty ? '*' : position,
+      'role': 'employee',
+      'profileImage': '',
+      'createdAt': FieldValue.serverTimestamp(),
     });
 
-    return res.user;
+    return result.user;
   }
 
-  Future<void> logout() async => await _auth.signOut();
+  Future<void> resetPassword(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
+  }
 }
