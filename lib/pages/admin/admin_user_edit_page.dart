@@ -19,6 +19,8 @@ class _AdminUserEditPageState extends State<AdminUserEditPage> {
   late TextEditingController positionCtrl;
   String role = 'employee';
 
+  bool loading = false;
+
   @override
   void initState() {
     super.initState();
@@ -29,46 +31,52 @@ class _AdminUserEditPageState extends State<AdminUserEditPage> {
     role = widget.user.role;
   }
 
+  Future<void> _save() async {
+    setState(() => loading = true);
+
+    await _firestore.updateUser(widget.user.id, {
+      'name': nameCtrl.text.trim(),
+      'email': emailCtrl.text.trim(),
+      'direction': directionCtrl.text.trim(),
+      'position': positionCtrl.text.trim(),
+      'role': role,
+    });
+
+    setState(() => loading = false);
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit User')),
-      body: Padding(
+      appBar: AppBar(title: const Text("Edit User")),
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _field(nameCtrl, 'Full Name'),
-            _field(emailCtrl, 'Email'),
-            _field(directionCtrl, 'Direction'),
-            _field(positionCtrl, 'Position'),
+        children: [
+          _field(nameCtrl, "Full Name"),
+          _field(emailCtrl, "Email"),
+          _field(directionCtrl, "Direction"),
+          _field(positionCtrl, "Position"),
 
-            DropdownButtonFormField(
-              value: role,
-              items: const [
-                DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                DropdownMenuItem(value: 'employee', child: Text('Employee')),
-              ],
-              onChanged: (v) => setState(() => role = v!),
-              decoration: const InputDecoration(labelText: 'Role'),
-            ),
+          DropdownButtonFormField(
+            value: role,
+            decoration: const InputDecoration(labelText: "Role"),
+            items: const [
+              DropdownMenuItem(value: 'admin', child: Text("Admin")),
+              DropdownMenuItem(value: 'employee', child: Text("Employee")),
+            ],
+            onChanged: (v) => setState(() => role = v!),
+          ),
 
-            const SizedBox(height: 24),
+          const SizedBox(height: 24),
 
-            ElevatedButton(
-              onPressed: () async {
-                await _firestore.updateUser(widget.user.id, {
-                  'name': nameCtrl.text,
-                  'email': emailCtrl.text,
-                  'direction': directionCtrl.text,
-                  'position': positionCtrl.text,
-                  'role': role,
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Save Changes'),
-            )
-          ],
-        ),
+          ElevatedButton(
+            onPressed: loading ? null : _save,
+            child: loading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text("Save Changes"),
+          ),
+        ],
       ),
     );
   }
@@ -83,4 +91,3 @@ class _AdminUserEditPageState extends State<AdminUserEditPage> {
     );
   }
 }
-

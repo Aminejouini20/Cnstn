@@ -19,11 +19,13 @@ class AuthService {
   }) async {
     final result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
+    // create user profile in Firestore
     await _db.collection('users').doc(result.user!.uid).set({
-      'name': name,
+      'Direction': 'Informatique',
+      'direction': direction.isEmpty ? '*' : direction,
       'email': email,
-      'direction': direction,
-      'position': position,
+      'name': name,
+      'position': position.isEmpty ? '*' : position,
       'role': 'employee',
       'profileImage': '',
       'createdAt': FieldValue.serverTimestamp(),

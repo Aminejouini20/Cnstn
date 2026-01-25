@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.cnstn2026"
-    compileSdk = 36  // Make sure this matches your flutter.compileSdkVersion
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.cnstn2026"
@@ -23,18 +23,18 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "17" // deprecated warning is fine, works with Flutter
+        jvmTarget = "17"
     }
 
     buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false       // Correct Kotlin DSL
-            isShrinkResources = false     // Correct Kotlin DSL
-            signingConfig = signingConfigs.getByName("debug")
-        }
-        getByName("debug") {
+        debug {
             isMinifyEnabled = false
             isShrinkResources = false
+        }
+        release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

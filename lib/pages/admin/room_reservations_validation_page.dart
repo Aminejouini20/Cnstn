@@ -73,16 +73,24 @@ class _RoomReservationsValidationPageState
                     subtitle:
                         "${item.requesterName} • ${item.reservationDate.toLocal()}",
                     onApprove: () async {
-                      await _firestore.updateRoomReservation(item.id, {
-                        'status': 'approved',
-                        'adminComment': 'Approved',
-                      });
+                      final comment =
+                          await _showCommentDialog(context, "Approve Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.approveRoomReservation(
+                        requestId: item.id,
+                        comment: comment,
+                      );
                     },
                     onReject: () async {
-                      await _firestore.updateRoomReservation(item.id, {
-                        'status': 'rejected',
-                        'adminComment': 'Rejected',
-                      });
+                      final comment =
+                          await _showCommentDialog(context, "Reject Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.rejectRoomReservation(
+                        requestId: item.id,
+                        comment: comment,
+                      );
                     },
                   );
                 },
@@ -91,6 +99,35 @@ class _RoomReservationsValidationPageState
           ),
         ),
       ],
+    );
+  }
+
+  Future<String?> _showCommentDialog(
+      BuildContext context, String title) async {
+    TextEditingController commentController = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: commentController,
+          decoration: const InputDecoration(
+            hintText: "Enter your comment",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, commentController.text.trim()),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
     );
   }
 

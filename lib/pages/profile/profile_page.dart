@@ -1,75 +1,53 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../core/app_routes.dart';
 
-class UserProfilePage extends StatefulWidget {
+class UserProfilePage extends StatelessWidget {
   const UserProfilePage({super.key});
 
   @override
-  State<UserProfilePage> createState() => _UserProfilePageState();
-}
-
-class _UserProfilePageState extends State<UserProfilePage> {
-  String name = "";
-  String email = "";
-  String direction = "";
-  String position = "";
-  String role = "";
-  String profileImage = "";
-
-  @override
-  void initState() {
-    super.initState();
-    loadUser();
-  }
-
-  Future<void> loadUser() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-
-    setState(() {
-      name = doc.get('name') ?? "";
-      email = doc.get('email') ?? "";
-      direction = doc.get('direction') ?? "";
-      position = doc.get('position') ?? "";
-      role = doc.get('role') ?? "";
-      profileImage = doc.get('profileImage') ?? "";
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0.6,
-        title: const Text("Profile"),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Avatar
-            Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(80),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    )
-                  ],
-                ),
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+
+        final name = data['name'] ?? '';
+        final email = data['email'] ?? '';
+        final direction = data['direction'] ?? '';
+        final position = data['position'] ?? '';
+        final role = data['role'] ?? 'employee';
+        final profileImage = data['profileImage'] ?? '';
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            title: const Text("Profile"),
+            centerTitle: true,
+          ),
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              /// AVATAR
+              Center(
                 child: CircleAvatar(
                   radius: 62,
                   backgroundColor: const Color(0xFFECEFF1),
-                  backgroundImage: profileImage != ""
-                      ? NetworkImage(profileImage)
-                      : null,
-                  child: profileImage == ""
+                  backgroundImage:
+                      profileImage.isNotEmpty ? NetworkImage(profileImage) : null,
+                  child: profileImage.isEmpty
                       ? Text(
                           name.isNotEmpty ? name[0].toUpperCase() : "U",
                           style: const TextStyle(
@@ -81,77 +59,89 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       : null,
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-            // Infos
-            buildInfoTile("Full Name", name, Icons.person),
-            buildInfoTile("Email", email, Icons.email),
-            buildInfoTile("Direction", direction, Icons.location_city),
-            buildInfoTile("Position", position, Icons.work),
-            buildInfoTile("Role", role, Icons.shield),
-
-            const SizedBox(height: 20),
-
-            // Edit profile button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1565C0),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+              Center(
+                child: Text(
+                  name,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                elevation: 5,
               ),
-              onPressed: () {
-                Navigator.pushNamed(context, '/profileEdit');
-              },
-              child: const Text(
-                "Edit Profile",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+              const SizedBox(height: 6),
+
+              Center(
+                child: Chip(
+                  backgroundColor:
+                      role == 'admin' ? Colors.redAccent : Colors.blueAccent,
+                  label: Text(
+                    role.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-            )
-          ],
-        ),
-      ),
+
+              const SizedBox(height: 24),
+
+              _infoTile("Email", email, Icons.email),
+              _infoTile("Direction", direction, Icons.location_city),
+              _infoTile("Position", position, Icons.work),
+
+              const SizedBox(height: 24),
+
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.profileEdit);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1565C0),
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text(
+                  "Edit Profile",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget buildInfoTile(String title, String value, IconData icon) {
+  Widget _infoTile(String title, String value, IconData icon) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          )
-        ],
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Row(
         children: [
           Icon(icon, color: const Color(0xFF1565C0)),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
                 ),
-              )
-            ],
+              ],
+            ),
           ),
         ],
       ),

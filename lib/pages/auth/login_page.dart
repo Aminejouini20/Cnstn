@@ -25,14 +25,41 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       final uid = userCred.user!.uid;
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final role = doc.get('role') ?? 'employee';
 
-      if (role == 'admin') {
-        Navigator.pushReplacementNamed(context, AppRoutes.adminHome);
-      } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.userHome);
+      // check if user document exists
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (!doc.exists) {
+        // if no document -> sign out
+        await FirebaseAuth.instance.signOut();
+        throw Exception("User profile not found in Firestore.");
       }
+
+      final role = doc.data()?['role'] ?? 'employee';
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        role == 'admin' ? AppRoutes.adminHome : AppRoutes.userHome,
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = "Login failed";
+
+      if (e.code == 'user-not-found') {
+        message = "User not found. Please register first.";
+      } else if (e.code == 'wrong-password') {
+        message = "Wrong password. Try again.";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email.";
+      } else if (e.code == 'user-disabled') {
+        message = "This user has been disabled.";
+      } else if (e.code == 'invalid-credential') {
+        message = "Invalid credential. Please try again.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: ${e.toString()}')),
@@ -45,7 +72,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // No AppBar
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -53,7 +79,6 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 40),
 
-              // Logo
               Center(
                 child: Image.asset(
                   'assets/logo/AppLogo.png',
@@ -63,7 +88,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // Email
               Container(
                 decoration: BoxDecoration(
                   boxShadow: [
@@ -86,7 +110,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 12),
 
-              // Password
               Container(
                 decoration: BoxDecoration(
                   boxShadow: [
@@ -110,7 +133,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 8),
 
-              // Forgot password (mini button)
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -127,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 12),
 
-              // Login button
               ElevatedButton(
                 onPressed: loading ? null : login,
                 style: ElevatedButton.styleFrom(
@@ -145,7 +166,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 18),
 
-              // Register link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

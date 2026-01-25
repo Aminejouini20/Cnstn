@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../models/material_request_model.dart';
 import '../models/room_reservation_model.dart';
-import '../models/notification_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -82,7 +81,12 @@ class FirestoreService {
   }
 
   Future<void> createMaterialRequest(Map<String, dynamic> data) async {
-    await _db.collection('material_requests').add(data);
+    await _db.collection('material_requests').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+      'adminComment': '',
+      'status': 'pending',
+    });
   }
 
   Future<void> updateMaterialRequest(String id, Map<String, dynamic> data) async {
@@ -131,7 +135,12 @@ class FirestoreService {
   }
 
   Future<void> createRoomReservation(Map<String, dynamic> data) async {
-    await _db.collection('room_reservations').add(data);
+    await _db.collection('room_reservations').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+      'adminComment': '',
+      'status': 'pending',
+    });
   }
 
   Future<void> updateRoomReservation(String id, Map<String, dynamic> data) async {
@@ -153,39 +162,45 @@ class FirestoreService {
     }).whereType<RoomReservationModel>().toList();
   }
 
-  /* ========================= NOTIFICATIONS ========================= */
+  /* ========================= APPROVE / REJECT (NO NOTIFICATIONS) ========================= */
 
-  Stream<List<NotificationModel>> getUserNotifications(String uid) {
-    return _db
-        .collection('notifications')
-        .where('userId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        try {
-          return NotificationModel.fromDoc(doc);
-        } catch (e) {
-          debugPrint('❌ Notification error (${doc.id}): $e');
-          return null;
-        }
-      }).whereType<NotificationModel>().toList();
+  Future<void> approveMaterialRequest({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('material_requests').doc(requestId).update({
+      'status': 'approved',
+      'adminComment': comment,
     });
   }
 
-  Future<void> createNotification(Map<String, dynamic> data) async {
-    await _db.collection('notifications').add({
-      ...data,
-      'createdAt': FieldValue.serverTimestamp(),
-      'read': false,
+  Future<void> rejectMaterialRequest({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('material_requests').doc(requestId).update({
+      'status': 'rejected',
+      'adminComment': comment,
     });
   }
 
-  Future<void> markNotificationRead(String id) async {
-    await _db.collection('notifications').doc(id).update({'read': true});
+  Future<void> approveRoomReservation({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('room_reservations').doc(requestId).update({
+      'status': 'approved',
+      'adminComment': comment,
+    });
   }
 
-  Future<void> deleteNotification(String id) async {
-    await _db.collection('notifications').doc(id).delete();
+  Future<void> rejectRoomReservation({
+    required String requestId,
+    required String comment,
+  }) async {
+    await _db.collection('room_reservations').doc(requestId).update({
+      'status': 'rejected',
+      'adminComment': comment,
+    });
   }
 }

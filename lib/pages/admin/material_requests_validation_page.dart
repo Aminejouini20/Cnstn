@@ -21,7 +21,6 @@ class _MaterialRequestsValidationPageState
       children: [
         const SizedBox(height: 12),
 
-        /// 🔍 SEARCH – Samsung style
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: TextField(
@@ -71,19 +70,26 @@ class _MaterialRequestsValidationPageState
 
                   return _card(
                     title: item.article,
-                    subtitle:
-                        "${item.requesterName} • ${item.direction}",
+                    subtitle: "${item.requesterName} • ${item.direction}",
                     onApprove: () async {
-                      await _firestore.updateMaterialRequest(item.id, {
-                        'status': 'approved',
-                        'adminComment': 'Approved',
-                      });
+                      final comment =
+                          await _showCommentDialog(context, "Approve Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.approveMaterialRequest(
+                        requestId: item.id,
+                        comment: comment,
+                      );
                     },
                     onReject: () async {
-                      await _firestore.updateMaterialRequest(item.id, {
-                        'status': 'rejected',
-                        'adminComment': 'Rejected',
-                      });
+                      final comment =
+                          await _showCommentDialog(context, "Reject Comment");
+                      if (comment == null || comment.isEmpty) return;
+
+                      await _firestore.rejectMaterialRequest(
+                        requestId: item.id,
+                        comment: comment,
+                      );
                     },
                   );
                 },
@@ -92,6 +98,35 @@ class _MaterialRequestsValidationPageState
           ),
         ),
       ],
+    );
+  }
+
+  Future<String?> _showCommentDialog(
+      BuildContext context, String title) async {
+    TextEditingController commentController = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: commentController,
+          decoration: const InputDecoration(
+            hintText: "Enter your comment",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, commentController.text.trim()),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
     );
   }
 

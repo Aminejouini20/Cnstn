@@ -12,6 +12,7 @@ class RoomReservationForm extends StatefulWidget {
 
 class _RoomReservationFormState extends State<RoomReservationForm> {
   final FirestoreService _firestore = FirestoreService();
+
   final TextEditingController reasonCtrl = TextEditingController();
   final TextEditingController participantsCtrl = TextEditingController();
   final TextEditingController timeCtrl = TextEditingController();
@@ -32,6 +33,22 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
   }
 
   Future<void> submit() async {
+    if (reasonCtrl.text.trim().isEmpty ||
+        participantsCtrl.text.trim().isEmpty ||
+        timeCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
+
+    if (int.tryParse(participantsCtrl.text.trim()) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Participants must be a number")),
+      );
+      return;
+    }
+
     setState(() => loading = true);
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -49,6 +66,7 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
       'createdAt': DateTime.now(),
     });
 
+    setState(() => loading = false);
     Navigator.pop(context);
   }
 
@@ -57,32 +75,101 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
     if (user == null) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Room Reservation")),
+      appBar: AppBar(
+        title: const Text("Room Reservation"),
+        backgroundColor: const Color(0xFF0B1B33),
+        elevation: 0,
+      ),
+      backgroundColor: const Color(0xFFF4F6F8),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            TextField(
+            _buildTitle(),
+            const SizedBox(height: 16),
+
+            _buildField(
               controller: reasonCtrl,
-              decoration: const InputDecoration(labelText: "Reason"),
+              label: "Reason",
+              hint: "ex: Training session",
             ),
             const SizedBox(height: 12),
-            TextField(
+
+            _buildField(
               controller: timeCtrl,
-              decoration: const InputDecoration(labelText: "Time Slot"),
+              label: "Time Slot",
+              hint: "ex: 12:00 - 14:00",
             ),
             const SizedBox(height: 12),
-            TextField(
+
+            _buildField(
               controller: participantsCtrl,
+              label: "Participants",
+              hint: "ex: 24",
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Participants"),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B1B33),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
               onPressed: loading ? null : submit,
-              child: loading ? const CircularProgressIndicator() : const Text("Submit"),
+              child: loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      "Submit Reservation",
+                      style: TextStyle(fontSize: 16),
+                    ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Text(
+          "Room Reservation Form",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0B1B33),
+          ),
+        ),
+        SizedBox(height: 6),
+        Text(
+          "Fill the details below to request a room",
+          style: TextStyle(color: Colors.grey),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
         ),
       ),
     );

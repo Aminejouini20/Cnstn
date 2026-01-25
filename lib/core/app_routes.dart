@@ -8,7 +8,8 @@ import '../pages/user/material_request_form.dart';
 import '../pages/user/my_material_requests_page.dart';
 import '../pages/user/room_reservation_form.dart';
 import '../pages/user/my_room_reservations_page.dart';
-import '../pages/user/notifications_page.dart';
+import '../pages/profile/edit_profile_page.dart';
+
 
 class AppRoutes {
   static const login = '/login';
@@ -16,6 +17,7 @@ class AppRoutes {
   static const reset = '/reset';
   static const userHome = '/userHome';
   static const adminHome = '/adminHome';
+  static const profileEdit = '/ProfileEditPage';
 
   static const materialRequestForm = '/materialRequestForm';
   static const roomReservationForm = '/roomReservationForm';
@@ -28,5 +30,7 @@ class AppRoutes {
     adminHome: (_) => const AdminHomePage(),
     materialRequestForm: (_) => const MaterialRequestForm(),
     roomReservationForm: (_) => const RoomReservationForm(),
+    profileEdit: (_) => const ProfileEditPage(),
   };
-}
+  }
+  

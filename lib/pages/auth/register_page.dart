@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
 
 import '../../core/app_routes.dart';
+import '../../services/firestore_service.dart';
+import '../../core/constants/cloudinary_constants.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -36,22 +39,33 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<String> uploadProfileImage(String uid) async {
-    final ref = FirebaseStorage.instance
-        .ref()
-        .child('users')
-        .child(uid)
-        .child('profile.jpg');
+  Future<String> uploadProfileImageToCloudinary() async {
+    final uri = Uri.parse(CloudinaryConstants.uploadUrl);
 
-    await ref.putFile(pickedImage!);
-    return await ref.getDownloadURL();
+    final request = http.MultipartRequest('POST', uri);
+
+    request.fields['upload_preset'] = CloudinaryConstants.uploadPreset;
+    request.files.add(
+      await http.MultipartFile.fromPath('file', pickedImage!.path),
+    );
+
+    final response = await request.send();
+    final resBody = await response.stream.bytesToString();
+
+    if (response.statusCode == 200) {
+      final data = json.decode(resBody);
+      return data['secure_url'];
+    } else {
+      throw Exception("Cloudinary upload failed");
+    }
   }
 
   Future<void> register() async {
     setState(() => loading = true);
 
     try {
-      final userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final userCred = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
         email: emailCtrl.text.trim(),
         password: passCtrl.text.trim(),
       );
@@ -60,17 +74,22 @@ class _RegisterPageState extends State<RegisterPage> {
 
       String imageUrl = '';
       if (pickedImage != null) {
-        imageUrl = await uploadProfileImage(uid);
+        imageUrl = await uploadProfileImageToCloudinary();
       }
 
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'name': nameCtrl.text.trim(),
+      final fs = FirestoreService();
+      await fs.createUser(uid, {
+        'Direction': 'Informatique',
+        'direction': directionCtrl.text.trim().isEmpty
+            ? '*'
+            : directionCtrl.text.trim(),
         'email': emailCtrl.text.trim(),
-        'direction': directionCtrl.text.trim(),
-        'position': positionCtrl.text.trim(),
-        'role': 'employee',
+        'name': nameCtrl.text.trim(),
+        'position': positionCtrl.text.trim().isEmpty
+            ? '*'
+            : positionCtrl.text.trim(),
         'profileImage': imageUrl,
-        'createdAt': FieldValue.serverTimestamp(),
+        'role': 'employee',
       });
 
       Navigator.pushReplacementNamed(context, AppRoutes.login);
@@ -83,10 +102,43 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon,
+      {bool hide = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: ctrl,
+        obscureText: hide,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'Enter your $label',
+          prefixIcon: Icon(icon, color: const Color(0xFF1565C0)),
+          filled: true,
+          fillColor: const Color(0xFFF7F9FC),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // no AppBar
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -94,16 +146,6 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               const SizedBox(height: 25),
 
-              Center(
-                child: Image.asset(
-                  'assets/logo/AppLogo.png',
-                  height: 110,
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // Profile image picker
               Center(
                 child: GestureDetector(
                   onTap: pickImage,
@@ -121,129 +163,27 @@ class _RegisterPageState extends State<RegisterPage> {
 
               const SizedBox(height: 20),
 
-              // Name
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'Enter your full name',
-                    prefixIcon: Icon(Icons.person, color: Color(0xFF1565C0)),
-                  ),
-                ),
-              ),
-
+              _buildField(nameCtrl, "Full Name", Icons.person),
               const SizedBox(height: 12),
-
-              // Email
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: emailCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'Enter your email',
-                    prefixIcon: Icon(Icons.email, color: Color(0xFF1565C0)),
-                  ),
-                ),
-              ),
-
+              _buildField(emailCtrl, "Email", Icons.email),
               const SizedBox(height: 12),
-
-              // Password
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
-                    prefixIcon: Icon(Icons.lock, color: Color(0xFF1565C0)),
-                  ),
-                ),
-              ),
-
+              _buildField(passCtrl, "Password", Icons.lock, hide: true),
               const SizedBox(height: 12),
-
-              // Direction
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: directionCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Direction',
-                    hintText: 'Enter your direction',
-                    prefixIcon: Icon(Icons.apartment, color: Color(0xFF1565C0)),
-                  ),
-                ),
-              ),
-
+              _buildField(directionCtrl, "Direction", Icons.apartment),
               const SizedBox(height: 12),
-
-              // Position
-              Container(
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: positionCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Position',
-                    hintText: 'Enter your position',
-                    prefixIcon: Icon(Icons.work, color: Color(0xFF1565C0)),
-                  ),
-                ),
-              ),
+              _buildField(positionCtrl, "Position", Icons.work),
 
               const SizedBox(height: 18),
 
-              // Register button
               ElevatedButton(
                 onPressed: loading ? null : register,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1565C0),
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: loading
                     ? const CircularProgressIndicator(color: Colors.white)
@@ -260,7 +200,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   const Text("Already have an account? "),
                   GestureDetector(
-                    onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+                    onTap: () =>
+                        Navigator.pushReplacementNamed(context, AppRoutes.login),
                     child: const Text(
                       "Login",
                       style: TextStyle(
