@@ -1,19 +1,20 @@
 📱 CNSTN 2026 – Flutter App
+
 Room & Material Management System
+
 🚀 Project Overview
 
-CNSTN 2026 is a Flutter mobile & web application developed for the
-Centre National des Sciences et Technologies Nucléaires (CNSTN – Tunisia).
+CNSTN 2026 is a Flutter mobile and web application developed for the Centre National des Sciences et Technologies Nucléaires (CNSTN – Tunisia).
 
-The application provides a digital internal management system for:
+It provides a digital internal management system for:
 
-🏢 Room reservation
+🏢 Room Reservations
 
-🧰 Material request
+🧰 Material Requests
 
-👥 User and role management
+👥 User and Role Management
 
-It replaces manual and paper-based procedures with a secure, real-time, role-based solution built using Flutter and Firebase, following a clean and modular architecture.
+The app replaces manual, paper-based processes with a secure, real-time, role-based solution, built with Flutter and Firebase, following a clean and modular architecture.
 
 🎯 Objectives
 
@@ -30,21 +31,21 @@ Provide a modern, scalable Flutter solution
 👥 User Roles
 👤 Employee
 
-Register and authenticate
+Register, login, and reset password
 
-Request room reservations
+Submit room reservations
 
-Request materials
+Submit material requests
 
 Track personal requests and their status
 
-Manage personal profile and information
+Update personal profile and information
 
 🛡️ Administrator
 
 View all room reservations
 
-Approve or reject reservations
+Approve or reject room reservations
 
 View all material requests
 
@@ -71,7 +72,7 @@ Upload and update profile image
 
 Profile images stored using Cloudinary
 
-Profile image URLs saved in Firestore
+Image URLs saved in Firestore
 
 🏢 Room Reservation Management
 
@@ -101,111 +102,162 @@ Firebase Authentication
 
 Cloud Firestore
 
-Cloudinary (profile image storage)
+Cloudinary (for profile image storage)
 
 Material UI
 
-Real-time data streams (StreamBuilder)
+Real-time data streams using StreamBuilder
 
 🗂️ Firestore Database Structure
+
 📁 Collection: users
-
-Document ID = Firebase Authentication uid
-
 Field	Type	Description
-uid	String	User ID
+id / uid	String	Firebase Authentication uid
 name	String	Full name
 email	String	Email address
-role	String	admin or employee
+role	String	admin / employee
 profileImage	String	Cloudinary image URL
 direction	String	Department
-poste	String	Job position
+position	String	Job position
 createdAt	Timestamp	Account creation date
+
 📁 Collection: room_reservations
+
 Field	Type	Description
+id	String	Document ID
 userId	String	Request owner
-roomName	String	Room identifier
-date	Timestamp	Reservation date
-startTime	String	Start time
-endTime	String	End time
-status	String	pending, approved, rejected
+requesterName	String	User full name
+direction	String	User direction
+reason	String	Purpose of reservation
+timeSlot	String	Reserved time slot
+participants	int	Number of participants
+status	String	pending / approved / rejected
 adminComment	String	Admin note
-createdAt	Timestamp	Request date
+reservationDate	Timestamp	Requested date
+createdAt	Timestamp	Request creation date
+
 📁 Collection: material_requests
+
 Field	Type	Description
+id	String	Document ID
 userId	String	Request owner
-materialName	String	Material name
-quantity	int	Requested quantity
-reason	String	Request justification
-status	String	pending, approved, rejected
+requesterName	String	User full name
+direction	String	User direction
+article	String	Requested material
+technicalDetails	String	Technical details / specs
+justification	String	Reason for request
+status	String	pending / approved / rejected
 adminComment	String	Admin note
-createdAt	Timestamp	Request date
+createdAt	Timestamp	Request creation date
+
 📚 Data Models (Dart)
+
 UserModel
 class UserModel {
-  final String uid;
+  final String id;
   final String name;
   final String email;
   final String role;
   final String profileImage;
   final String direction;
-  final String poste;
+  final String position;
 
   UserModel({
-    required this.uid,
+    required this.id,
     required this.name,
     required this.email,
     required this.role,
     required this.profileImage,
     required this.direction,
-    required this.poste,
+    required this.position,
   });
+}
+
+RoomReservationModel
+class RoomReservationModel {
+  final String id;
+  final String userId;
+  final String requesterName;
+  final String direction;
+  final String reason;
+  final String timeSlot;
+  final int participants;
+  final String status;
+  final String adminComment;
+  final DateTime reservationDate;
+  final DateTime createdAt;
+}
+
+MaterialRequestModel
+class MaterialRequestModel {
+  final String id;
+  final String userId;
+  final String requesterName;
+  final String direction;
+  final String article;
+  final String technicalDetails;
+  final String justification;
+  final String status;
+  final String adminComment;
+  final DateTime createdAt;
 }
 
 🏗️ Project Architecture (Clean Architecture)
 lib/
 │
-├── models/
-│   ├── user_model.dart
-│   ├── room_reservation_model.dart
-│   └── material_request_model.dart
+├── main.dart
+│
+├── core/
+│   ├── theme.dart                # App theming (colors, fonts, styles)
+│   ├── app_routes.dart            # Named routes for navigation
+│   └── widgets/
+│       ├── app_button.dart        # Custom button widget
+│       └── app_text_field.dart    # Custom text field widget
 │
 ├── services/
-│   ├── auth_service.dart
-│   ├── firestore_service.dart
-│   └── cloudinary_service.dart
+│   ├── auth_service.dart          # Firebase Authentication logic
+│   ├── firestore_service.dart     # CRUD operations for Firestore
+│   ├── firestore_seed.dart        # Optional: initial data seeding
+│   └── cloudinary_service.dart    # Upload profile images to Cloudinary
+│
+├── models/
+│   ├── user_model.dart
+│   ├── material_request_model.dart
+│   └── room_reservation_model.dart
 │
 ├── pages/
 │   ├── auth/
 │   │   ├── login_page.dart
-│   │   └── register_page.dart
+│   │   ├── register_page.dart
+│   │   └── reset_password_page.dart
 │   │
 │   ├── user/
-│   │   ├── home_page.dart
-│   │   ├── profile_page.dart
-│   │   ├── room_request_page.dart
-│   │   └── material_request_page.dart
+│   │   ├── user_home_page.dart
+│   │   ├── user_dashboard_page.dart
+│   │   ├── material_request_form.dart
+│   │   ├── my_material_requests_page.dart
+│   │   ├── room_reservation_form.dart
+│   │   └── my_room_reservations_page.dart
 │   │
 │   └── admin/
-│       ├── dashboard_page.dart
-│       ├── room_validation_page.dart
-│       └── material_validation_page.dart
-│
-├── widgets/
-│   ├── custom_button.dart
-│   └── custom_textfield.dart
-│
-└── main.dart
-
+│       ├── admin_home_page.dart
+│       ├── admin_users_page.dart
+│       ├── admin_material_requests_page.dart
+│       ├── material_requests_validation_page.dart
+│       ├── admin_room_reservations_page.dart
+│       └── room_reservations_validation_page.dart
+├── utils/
+    ├── constants.dart             # Colors, strings, Cloudinary URL
+    └── helpers.dar
 🔐 Security Rules Overview
 
-Users can access only their own data
+Users can access only their own requests
 
-Admins can validate and manage all requests
+Users can delete only pending requests
 
-Role-based access enforced via Firestore rules
+Admins have full access for validation and user management
 
-No public write access
+Role-based access control is enforced via Firestore rules
 
 📌 Project Status
 
@@ -217,4 +269,4 @@ No public write access
 
 Mohamed Amine JOUINI
 Flutter Developer
-Internship Project – CNSTN
+Internship Project – CNSTN 2026
