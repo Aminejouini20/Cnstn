@@ -9,17 +9,17 @@ class AdminDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final fs = FirestoreService();
 
+    /// Navigate to a specific tab in AdminHomePage
     void goToAdminTab(int index) {
       Navigator.pushNamed(
         context,
         AppRoutes.adminHome,
-        arguments: index,
+        arguments: index, // 0 = Users tab
       );
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F8),
-
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -29,7 +29,7 @@ class AdminDashboardPage extends StatelessWidget {
               /// ===== USERS =====
               _usersCard(
                 stream: fs.getUsers(),
-                onTap: () => goToAdminTab(0),
+                onTap: () => goToAdminTab(4), // 4 = Users list tab
               ),
 
               const SizedBox(height: 18),
@@ -127,8 +127,7 @@ class AdminDashboardPage extends StatelessWidget {
           StreamBuilder(
             stream: pendingStream,
             builder: (_, s) {
-              final pending =
-                  s.hasData ? (s.data as List).length : 0;
+              final pending = s.hasData ? (s.data as List).length : 0;
               return _statusRow(
                 emoji: "⏳",
                 label: "Pending",
@@ -144,8 +143,7 @@ class AdminDashboardPage extends StatelessWidget {
           StreamBuilder(
             stream: treatedStream,
             builder: (_, s) {
-              final treated =
-                  s.hasData ? (s.data as List).length : 0;
+              final treated = s.hasData ? (s.data as List).length : 0;
               return _statusRow(
                 emoji: "✅",
                 label: "Treated",

@@ -22,6 +22,9 @@ class AppRoutes {
   static const materialRequestForm = '/materialRequestForm';
   static const roomReservationForm = '/roomReservationForm';
 
+  static const myMaterialRequests = '/myMaterialRequests';
+  static const myRoomReservations = '/myRoomReservations';
+
   static final routes = <String, WidgetBuilder>{
     login: (_) => const LoginPage(),
     register: (_) => const RegisterPage(),
@@ -31,6 +34,8 @@ class AppRoutes {
     materialRequestForm: (_) => const MaterialRequestForm(),
     roomReservationForm: (_) => const RoomReservationForm(),
     profileEdit: (_) => const ProfileEditPage(),
+    myMaterialRequests: (_) => const MyMaterialRequestsPage(),
+    myRoomReservations: (_) => const MyRoomReservationsPage(),
   };
   }
   

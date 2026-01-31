@@ -13,28 +13,22 @@ class MaterialRequestForm extends StatefulWidget {
 class _MaterialRequestFormState extends State<MaterialRequestForm> {
   final FirestoreService _firestore = FirestoreService();
 
-  final TextEditingController techCtrl = TextEditingController();
-  final TextEditingController justCtrl = TextEditingController();
+  final techCtrl = TextEditingController();
+  final justCtrl = TextEditingController();
 
-  bool loading = false;
   UserModel? user;
-
+  bool loading = false;
   String? selectedArticle;
 
   final List<String> articles = [
-    "Ordinateur de bureau",
     "Ordinateur portable",
     "Clavier",
     "Souris",
-    "Lecteur CD/DVD",
-    "Scanner",
-    "Graveur CD/DVD",
     "Imprimante",
-    "Haut parleur",
-    "Multiprise",
-    "Flash-disk USB",
-    "Cable Réseau",
-    "Autre article informatique"
+    "Scanner",
+    "Câble Réseau",
+    "USB",
+    "Autre"
   ];
 
   @override
@@ -45,37 +39,32 @@ class _MaterialRequestFormState extends State<MaterialRequestForm> {
 
   Future<void> _loadUser() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final u = await _firestore.getUserById(uid);
-    setState(() => user = u);
+    user = await _firestore.getUserById(uid);
+    setState(() {});
   }
 
   Future<void> submit() async {
     if (selectedArticle == null ||
-        techCtrl.text.trim().isEmpty ||
-        justCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+        techCtrl.text.isEmpty ||
+        justCtrl.text.isEmpty) {
+      _snack("Fill all fields");
       return;
     }
 
     setState(() => loading = true);
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
     await _firestore.createMaterialRequest({
-      'userId': uid,
+      'userId': user!.id,
       'requesterName': user!.name,
       'direction': user!.direction,
       'article': selectedArticle,
-      'technicalDetails': techCtrl.text.trim(),
-      'justification': justCtrl.text.trim(),
+      'technicalDetails': techCtrl.text,
+      'justification': justCtrl.text,
       'status': 'pending',
       'adminComment': '',
       'createdAt': DateTime.now(),
     });
 
-    setState(() => loading = false);
     Navigator.pop(context);
   }
 
@@ -84,118 +73,88 @@ class _MaterialRequestFormState extends State<MaterialRequestForm> {
     if (user == null) return const Center(child: CircularProgressIndicator());
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text("Material Request"),
-        backgroundColor: const Color(0xFF0B1B33),
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF4F6F8),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            _buildTitle(),
-            const SizedBox(height: 16),
-
-            // Dropdown
-            DropdownButtonFormField<String>(
-              value: selectedArticle,
-              items: articles
-                  .map((a) => DropdownMenuItem(
-                        value: a,
-                        child: Text(a),
-                      ))
-                  .toList(),
-              onChanged: (v) => setState(() => selectedArticle = v),
-              decoration: InputDecoration(
-                labelText: "Article",
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          _card(
+            child: Column(
+              children: [
+                _dropdown(),
+                const SizedBox(height: 16),
+                _field(techCtrl, "Technical details"),
+                const SizedBox(height: 16),
+                _field(justCtrl, "Justification", max: 4),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 28),
 
-            _buildField(
-              controller: techCtrl,
-              label: "Détails techniques",
-              hint: "ex: 20px, 10 units, etc.",
-            ),
-            const SizedBox(height: 12),
-
-            _buildField(
-              controller: justCtrl,
-              label: "Justification",
-              hint: "Pourquoi avez-vous besoin de cet article ?",
-            ),
-            const SizedBox(height: 24),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B1B33),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: loading ? null : submit,
-              child: loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      "Submit Request",
-                      style: TextStyle(fontSize: 16),
-                    ),
-            ),
-          ],
-        ),
+          _submitButton(),
+        ],
       ),
     );
   }
 
-  Widget _buildTitle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
-          "Material Request Form",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B1B33),
-          ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          "Request materials with full details",
-          style: TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
+  /// ---------- UI ----------
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
+  Widget _card({required Widget child}) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 12)
+          ],
+        ),
+        child: child,
+      );
+
+  Widget _dropdown() => DropdownButtonFormField<String>(
+        value: selectedArticle,
+        items: articles
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+        onChanged: (v) => setState(() => selectedArticle = v),
+        decoration: _input("Article"),
+      );
+
+  Widget _field(TextEditingController c, String label, {int max = 1}) =>
+      TextField(
+        controller: c,
+        maxLines: max,
+        decoration: _input(label),
+      );
+
+  InputDecoration _input(String label) => InputDecoration(
         labelText: label,
-        hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF3F6FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
-      ),
-    );
-  }
+      );
+
+  Widget _submitButton() => ElevatedButton(
+        onPressed: loading ? null : submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+        child: loading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text("Submit Request"),
+      );
+
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }

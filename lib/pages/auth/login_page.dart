@@ -27,7 +27,10 @@ class _LoginPageState extends State<LoginPage> {
       final uid = userCred.user!.uid;
 
       // check if user document exists
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
       if (!doc.exists) {
         // if no document -> sign out
@@ -57,13 +60,13 @@ class _LoginPageState extends State<LoginPage> {
         message = "Invalid credential. Please try again.";
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login failed: ${e.toString()}')));
     } finally {
       setState(() => loading = false);
     }
@@ -80,9 +83,31 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 40),
 
               Center(
-                child: Image.asset(
-                  'assets/logo/AppLogo.png',
-                  height: 120,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Padding(
+                      padding: const EdgeInsets.all(
+                        16,
+                      ),
+                      child: Image.asset(
+                        'assets/logo/AppLogo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
@@ -136,7 +161,8 @@ class _LoginPageState extends State<LoginPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.reset),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.reset),
                   child: const Text(
                     "Forgot password?",
                     style: TextStyle(
@@ -171,7 +197,8 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   const Text("Don't have an account? "),
                   GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.register),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.register),
                     child: const Text(
                       "Create account",
                       style: TextStyle(
@@ -179,7 +206,7 @@ class _LoginPageState extends State<LoginPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ],

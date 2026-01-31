@@ -11,7 +11,7 @@ class MaterialRequestDetailsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Request Details"),
-        backgroundColor: const Color(0xFF0B1B33),
+        backgroundColor: const Color.fromARGB(255, 240, 241, 243),
       ),
       backgroundColor: const Color(0xFFF4F6F8),
       body: Padding(

@@ -14,89 +14,214 @@ class AdminTreatedRequestsPage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: const Color(0xffF6F7FB),
+
+        ////////////////////////////////////////////////////////////
+        /// APP BAR (NO TITLE - CLEAN SAMSUNG STYLE)
+        ////////////////////////////////////////////////////////////
+
         appBar: AppBar(
-          title: const Text("Treated Requests"),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          toolbarHeight: 8, // minimal height (no title space)
+
           bottom: const TabBar(
+            indicatorWeight: 3,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
             tabs: [
               Tab(text: "Materials"),
               Tab(text: "Rooms"),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [_materials(), _rooms()],
+
+        ////////////////////////////////////////////////////////////
+
+        body: const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: TabBarView(
+            children: [
+              _MaterialsTab(),
+              _RoomsTab(),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _materials() {
+////////////////////////////////////////////////////////////
+/// MATERIALS TAB
+////////////////////////////////////////////////////////////
+
+class _MaterialsTab extends StatelessWidget {
+  const _MaterialsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final firestore = FirestoreService();
+
     return StreamBuilder<List<MaterialRequestModel>>(
-      stream: _firestore.getTreatedMaterialRequests(),
+      stream: firestore.getTreatedMaterialRequests(),
       builder: (_, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return ListView(
-          padding: const EdgeInsets.all(12),
-          children: snap.data!.map((m) {
-            return Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.inventory_2),
-                title: Text(m.article),
-                subtitle: Text(m.requesterName),
-                trailing: Chip(
-                  label: Text(m.status.toUpperCase()),
-                  backgroundColor: statusColor(m.status).withOpacity(.15),
-                  labelStyle: TextStyle(
-                    color: statusColor(m.status),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+        return ListView.builder(
+          padding: const EdgeInsets.all(18),
+          itemCount: snap.data!.length,
+          itemBuilder: (_, i) {
+            final m = snap.data![i];
+
+            return _ModernCard(
+              icon: Icons.inventory_2_outlined,
+              title: m.article,
+              subtitle: m.requesterName,
+              status: m.status,
             );
-          }).toList(),
+          },
         );
       },
     );
   }
+}
 
-  Widget _rooms() {
+////////////////////////////////////////////////////////////
+/// ROOMS TAB
+////////////////////////////////////////////////////////////
+
+class _RoomsTab extends StatelessWidget {
+  const _RoomsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final firestore = FirestoreService();
+
     return StreamBuilder<List<RoomReservationModel>>(
-      stream: _firestore.getTreatedRoomReservations(),
+      stream: firestore.getTreatedRoomReservations(),
       builder: (_, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return ListView(
-          padding: const EdgeInsets.all(12),
-          children: snap.data!.map((r) {
-            return Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ListTile(
-                leading: const Icon(Icons.meeting_room),
-                title: Text(r.reason),
-                subtitle: Text(r.reason),
-                trailing: Chip(
-                  label: Text(r.status.toUpperCase()),
-                  backgroundColor: statusColor(r.status).withOpacity(.15),
-                  labelStyle: TextStyle(
-                    color: statusColor(r.status),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+        return ListView.builder(
+          padding: const EdgeInsets.all(18),
+          itemCount: snap.data!.length,
+          itemBuilder: (_, i) {
+            final r = snap.data![i];
+
+            return _ModernCard(
+              icon: Icons.meeting_room_outlined,
+              title: r.reason,
+              subtitle: r.reason,
+              status: r.status,
             );
-          }).toList(),
+          },
         );
       },
+    );
+  }
+}
+
+////////////////////////////////////////////////////////////
+/// SAMSUNG ONE UI MODERN CARD
+////////////////////////////////////////////////////////////
+
+class _ModernCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String status;
+
+  const _ModernCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.status,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = statusColor(status);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          /// Icon bubble
+          Container(
+            height: 48,
+            width: 48,
+            decoration: BoxDecoration(
+              color: color.withOpacity(.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: color),
+          ),
+
+          const SizedBox(width: 16),
+
+          /// Text section
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          /// Status pill
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(.12),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: Text(
+              status.toUpperCase(),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

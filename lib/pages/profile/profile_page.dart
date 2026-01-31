@@ -33,10 +33,6 @@ class UserProfilePage extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: Colors.white,
-          appBar: AppBar(
-            title: const Text("Profile"),
-            centerTitle: true,
-          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [

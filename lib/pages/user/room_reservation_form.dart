@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 
@@ -13,13 +14,17 @@ class RoomReservationForm extends StatefulWidget {
 class _RoomReservationFormState extends State<RoomReservationForm> {
   final FirestoreService _firestore = FirestoreService();
 
-  final TextEditingController reasonCtrl = TextEditingController();
-  final TextEditingController participantsCtrl = TextEditingController();
-  final TextEditingController timeCtrl = TextEditingController();
+  final reasonCtrl = TextEditingController();
+  final participantsCtrl = TextEditingController();
 
-  bool loading = false;
+  DateTime? selectedDate;
+  TimeOfDay? startTime;
+  TimeOfDay? endTime;
+
   UserModel? user;
+  bool loading = false;
 
+  /// ================= INIT =================
   @override
   void initState() {
     super.initState();
@@ -28,24 +33,23 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
 
   Future<void> _loadUser() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    final u = await _firestore.getUserById(uid);
-    setState(() => user = u);
+    user = await _firestore.getUserById(uid);
+    setState(() {});
   }
 
+  /// ================= SUBMIT =================
   Future<void> submit() async {
-    if (reasonCtrl.text.trim().isEmpty ||
-        participantsCtrl.text.trim().isEmpty ||
-        timeCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+    if (reasonCtrl.text.isEmpty ||
+        participantsCtrl.text.isEmpty ||
+        selectedDate == null ||
+        startTime == null ||
+        endTime == null) {
+      _snack("Please fill all fields");
       return;
     }
 
-    if (int.tryParse(participantsCtrl.text.trim()) == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Participants must be a number")),
-      );
+    if (int.tryParse(participantsCtrl.text) == null) {
+      _snack("Participants must be a number");
       return;
     }
 
@@ -53,16 +57,19 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
+    final timeSlot =
+        "${startTime!.format(context)} - ${endTime!.format(context)}";
+
     await _firestore.createRoomReservation({
       'userId': uid,
       'requesterName': user!.name,
       'direction': user!.direction,
       'reason': reasonCtrl.text.trim(),
-      'timeSlot': timeCtrl.text.trim(),
+      'timeSlot': timeSlot,
       'participants': int.parse(participantsCtrl.text.trim()),
       'status': 'pending',
       'adminComment': '',
-      'reservationDate': DateTime.now(),
+      'reservationDate': selectedDate,
       'createdAt': DateTime.now(),
     });
 
@@ -70,108 +77,200 @@ class _RoomReservationFormState extends State<RoomReservationForm> {
     Navigator.pop(context);
   }
 
+  /// ================= UI =================
   @override
   Widget build(BuildContext context) {
-    if (user == null) return const Center(child: CircularProgressIndicator());
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+
+      /// ===== APP BAR =====
       appBar: AppBar(
         title: const Text("Room Reservation"),
-        backgroundColor: const Color(0xFF0B1B33),
+        backgroundColor: Colors.white,
         elevation: 0,
+        foregroundColor: Colors.black,
       ),
-      backgroundColor: const Color(0xFFF4F6F8),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            _buildTitle(),
-            const SizedBox(height: 16),
 
-            _buildField(
-              controller: reasonCtrl,
-              label: "Reason",
-              hint: "ex: Training session",
-            ),
-            const SizedBox(height: 12),
+      /// ===== BODY =====
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          /// ===== FORM CARD =====
+          _card(
+            child: Column(
+              children: [
+                _textField(reasonCtrl, "Reason", icon: Icons.edit_note),
+                const SizedBox(height: 16),
 
-            _buildField(
-              controller: timeCtrl,
-              label: "Time Slot",
-              hint: "ex: 12:00 - 14:00",
-            ),
-            const SizedBox(height: 12),
+                _participantsField(),
+                const SizedBox(height: 16),
 
-            _buildField(
-              controller: participantsCtrl,
-              label: "Participants",
-              hint: "ex: 24",
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
+                _datePicker(),
+                const SizedBox(height: 16),
 
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B1B33),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: loading ? null : submit,
-              child: loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      "Submit Reservation",
-                      style: TextStyle(fontSize: 16),
-                    ),
+                _timePickers(),
+              ],
             ),
+          ),
+
+          const SizedBox(height: 28),
+
+          _submitButton(),
+        ],
+      ),
+    );
+  }
+
+  /// CARD CONTAINER
+  Widget _card({required Widget child}) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.05),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            )
           ],
         ),
-      ),
-    );
-  }
+        child: child,
+      );
 
-  Widget _buildTitle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
-          "Room Reservation Form",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B1B33),
+  /// TEXT FIELD
+  Widget _textField(TextEditingController controller, String label,
+          {IconData? icon}) =>
+      TextField(
+        controller: controller,
+        decoration: _input(label, icon: icon),
+      );
+
+  /// PARTICIPANTS
+  Widget _participantsField() => TextField(
+        controller: participantsCtrl,
+        keyboardType: TextInputType.number,
+        decoration: _input("Participants", icon: Icons.people),
+      );
+
+  /// DATE PICKER
+  Widget _datePicker() => InkWell(
+        onTap: () async {
+          final date = await showDatePicker(
+            context: context,
+            firstDate: DateTime.now(),
+            lastDate: DateTime(2100),
+            initialDate: DateTime.now(),
+          );
+
+          if (date != null) {
+            setState(() => selectedDate = date);
+          }
+        },
+        child: _fakeField(
+          label: "Date",
+          value: selectedDate == null
+              ? "Select date"
+              : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+          icon: Icons.calendar_month,
+        ),
+      );
+
+  /// TIME PICKERS
+  Widget _timePickers() => Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final t = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (t != null) setState(() => startTime = t);
+              },
+              child: _fakeField(
+                label: "Start",
+                value: startTime?.format(context) ?? "Start time",
+                icon: Icons.access_time,
+              ),
+            ),
           ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          "Fill the details below to request a room",
-          style: TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
+          const SizedBox(width: 12),
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final t = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (t != null) setState(() => endTime = t);
+              },
+              child: _fakeField(
+                label: "End",
+                value: endTime?.format(context) ?? "End time",
+                icon: Icons.access_time_filled,
+              ),
+            ),
+          ),
+        ],
+      );
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
+  /// FAKE FIELD (for pickers)
+  Widget _fakeField(
+          {required String label,
+          required String value,
+          required IconData icon}) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F6FA),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Colors.grey),
+            const SizedBox(width: 10),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
+
+  /// INPUT STYLE
+  InputDecoration _input(String label, {IconData? icon}) => InputDecoration(
         labelText: label,
-        hintText: hint,
+        prefixIcon: icon != null ? Icon(icon) : null,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF3F6FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
-      ),
-    );
-  }
+      );
+
+  /// SUBMIT BUTTON
+  Widget _submitButton() => ElevatedButton(
+        onPressed: loading ? null : submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+        child: loading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                "Reserve Room",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+      );
+
+  /// SNACK
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
